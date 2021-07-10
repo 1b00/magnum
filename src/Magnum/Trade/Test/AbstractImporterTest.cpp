@@ -1531,8 +1531,9 @@ void AbstractImporterTest::scene() {
             return {};
         }
         Containers::Optional<SceneData> doScene(UnsignedInt id) override {
-            if(id == 7) return SceneData{{}, {}, &state};
-            return SceneData{{}, {}};
+            if(id == 7)
+                return SceneData{SceneObjectType::UnsignedByte, 0, nullptr, {}, &state};
+            return SceneData{SceneObjectType::UnsignedByte, 0, nullptr, {}};
         }
     } importer;
 
