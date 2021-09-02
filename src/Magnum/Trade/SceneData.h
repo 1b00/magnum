@@ -475,6 +475,29 @@ MAGNUM_TRADE_EXPORT UnsignedInt sceneFieldTypeSize(SceneFieldType type);
 
 Convenience type for populating @ref SceneData, see its documentation for an
 introduction.
+
+@section Trade-SceneFieldData-usage Usage
+
+The most straightforward usage is constructing an instance from a
+@ref SceneField and a strided view for the field data and object mapping. The
+@ref SceneObjectType and @ref SceneFieldType gets inferred from the view
+types:
+
+@snippet MagnumTrade.cpp SceneFieldData-usage
+
+Alternatively, you can pass typeless @cpp const void @ce or 2D views and supply
+@ref SceneObjectType and @ref SceneFieldType explicitly.
+
+@subsection Trade-SceneFieldData-usage-offset-only Offset-only field data
+
+If the actual field / object data location is not known yet, the instance can
+be created as "offset-only", meaning the actual view gets created only later
+when passed to a @ref SceneData instance with a concrete data array. This is
+useful mainly to avoid pointer patching during data serialization, less so when
+the data layout is static (and thus can be defined at compile time), but the
+actual data is allocated / populated at runtime:
+
+@snippet MagnumTrade.cpp SceneFieldData-usage-offset-only
 */
 class MAGNUM_TRADE_EXPORT SceneFieldData {
     public:
@@ -723,6 +746,64 @@ Containers::Array<SceneFieldData> MAGNUM_TRADE_EXPORT sceneFieldDataNonOwningArr
 
 Contains scene hierarchy, object transformations and association of mesh,
 material, camera, light and other resources with particular objects.
+
+@section Trade-SceneData-terminology Terminology and representation
+
+The class stores all data in a single array and all metadata in another. The
+internal design is similar to @ref MeshData, except that the contents are not
+limited to what the GPU vertex pipeline can understand. The two major concepts
+are Objects and Fields.
+
+-   *Objects* in the scene are represented as a contiguous sequence of numeric
+    IDs from @cpp 0 @ce up to @ref objectCount() minus one. The object itself
+    contains *nothing* by default, not even the transformation, it's just a
+    unique index.
+-   *Fields* are properties associated with particular objects, such as a
+    transformation matrix, a mesh ID or any other from @ref SceneField. Data
+    for a particular field are described by a pair of (strided) array views,
+    one containing the actual field data (with a type from @ref SceneFieldType)
+    and the other describing which object index the field belongs to (all
+    indices being of a type from @ref SceneIndexType). The only restriction on
+    fields is that there can be at most one array for one particular
+    @ref SceneField, apart from that the same field can generally be be
+    associated with a particular object index multiple times (such as one
+    object having multiple meshes attached) and, conversely, a field doesn't
+    have to be defined for each object (so e.g. for a scene with a hundred
+    objects the @ref SceneField::LightId can have just three items). The actual
+    data layout is also left up to the data producer / importer --- different
+    fields can share the same object mapping view, a group of fields that
+    applies to a set of objects can (but doesn't have to) be interleaved
+    together etc.
+
+@section Trade-SceneData-usage Basic usage
+
+@ref TODO asArray, expected to use those to fill some ECS thingy
+
+@subsection Trade-SceneData-usage-object Per-object access
+
+@ref TODO not recommended but available for debugging purposes
+
+@section Trade-SceneData-usage-advanced Advanced usage
+
+@ref TODO via direct accessors
+
+@section Trade-SceneData-usage-mutable Mutable data access
+
+@ref TODO possibly for storing global animated/simulated state? :O or for
+    reordering data
+
+@section Trade-SceneData-populating Populating an instance
+
+@ref TODO ArrayTuple FTW
+
+@snippet MagnumTrade.cpp SceneData-populating
+
+@ref TODO arrays etc? where it was in MeshDatA?
+
+----
+
+
+@ref TODOTODO also there are TODO s in the cpp, fix them
 
 @see @ref AbstractImporter::scene()
 */
