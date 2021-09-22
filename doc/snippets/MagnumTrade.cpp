@@ -46,8 +46,6 @@
 #include "Magnum/Trade/LightData.h"
 #include "Magnum/Trade/MaterialData.h"
 #include "Magnum/Trade/MeshData.h"
-#include "Magnum/Trade/ObjectData2D.h"
-#include "Magnum/Trade/MeshObjectData3D.h"
 #include "Magnum/Trade/PbrClearCoatMaterialData.h"
 #include "Magnum/Trade/PbrSpecularGlossinessMaterialData.h"
 #include "Magnum/Trade/PbrMetallicRoughnessMaterialData.h"
@@ -65,9 +63,12 @@
 
 #ifdef MAGNUM_BUILD_DEPRECATED
 #define _MAGNUM_NO_DEPRECATED_MESHDATA /* So it doesn't yell here */
+#define _MAGNUM_NO_DEPRECATED_OBJECTDATA /* So it doesn't yell here */
 
 #include "Magnum/Trade/MeshData2D.h"
 #include "Magnum/Trade/MeshData3D.h"
+#include "Magnum/Trade/MeshObjectData3D.h"
+#include "Magnum/Trade/ObjectData2D.h"
 #endif
 
 #define DOXYGEN_IGNORE(...) __VA_ARGS__
@@ -818,9 +819,9 @@ MeshTools::transformPointsInPlace(transformation, data.positions(0));
 /* [MeshData2D-transform] */
 CORRADE_IGNORE_DEPRECATED_POP
 }
-#endif
 
 {
+CORRADE_IGNORE_DEPRECATED_PUSH
 Trade::ObjectData2D& baz();
 Trade::ObjectData2D& data = baz();
 /* [ObjectData2D-transformation] */
@@ -829,9 +830,9 @@ Matrix3 transformation =
     Matrix3::scaling(data.scaling());
 /* [ObjectData2D-transformation] */
 static_cast<void>(transformation);
+CORRADE_IGNORE_DEPRECATED_POP
 }
 
-#ifdef MAGNUM_BUILD_DEPRECATED
 {
 CORRADE_IGNORE_DEPRECATED_PUSH
 Trade::MeshData3D& bar();
@@ -845,9 +846,9 @@ MeshTools::transformVectorsInPlace(transformation, data.normals(0));
 /* [MeshData3D-transform] */
 CORRADE_IGNORE_DEPRECATED_POP
 }
-#endif
 
 {
+CORRADE_IGNORE_DEPRECATED_PUSH
 Trade::ObjectData3D& fizz();
 Trade::ObjectData3D& data = fizz();
 /* [ObjectData3D-transformation] */
@@ -856,7 +857,9 @@ Matrix4 transformation =
     Matrix4::scaling(data.scaling());
 /* [ObjectData3D-transformation] */
 static_cast<void>(transformation);
+CORRADE_IGNORE_DEPRECATED_POP
 }
+#endif
 
 {
 /* [SceneData-populating] */

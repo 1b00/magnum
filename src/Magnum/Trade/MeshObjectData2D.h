@@ -25,21 +25,31 @@
     DEALINGS IN THE SOFTWARE.
 */
 
+#ifdef MAGNUM_BUILD_DEPRECATED
 /** @file
  * @brief Class @ref Magnum::Trade::MeshObjectData2D
  */
+#endif
 
+#include "Magnum/configure.h"
+
+#ifdef MAGNUM_BUILD_DEPRECATED
 #include "Magnum/Trade/ObjectData2D.h"
+
+#ifndef _MAGNUM_NO_DEPRECATED_OBJECTDATA
+CORRADE_DEPRECATED_FILE("use Magnum/Trade/SceneData.h and the SceneData class instead")
+#endif
 
 namespace Magnum { namespace Trade {
 
 /**
 @brief Two-dimensional mesh object data
+@m_deprecated_since_latest Use @ref SceneData instead.
 
 Provides access to material information for given mesh instance.
 @see @ref AbstractImporter::object2D(), @ref MeshObjectData3D
 */
-class MAGNUM_TRADE_EXPORT MeshObjectData2D: public ObjectData2D {
+class CORRADE_DEPRECATED("use SceneData instead") MAGNUM_TRADE_EXPORT MeshObjectData2D: public ObjectData2D {
     public:
         /**
          * @brief Construct with combined transformation
@@ -54,13 +64,11 @@ class MAGNUM_TRADE_EXPORT MeshObjectData2D: public ObjectData2D {
          */
         explicit MeshObjectData2D(std::vector<UnsignedInt> children, const Matrix3& transformation, UnsignedInt instance, Int material, Int skin, const void* importerState = nullptr);
 
-        #ifdef MAGNUM_BUILD_DEPRECATED
         /** @brief @copybrief MeshObjectData2D(std::vector<UnsignedInt>, const Matrix3&, UnsignedInt, Int, Int, const void*)
          * @m_deprecated_since_latest Use @ref MeshObjectData2D(std::vector<UnsignedInt>, const Matrix3&, UnsignedInt, Int, Int, const void*)
          *      instead.
          */
         explicit CORRADE_DEPRECATED("use MeshObjectData2D(std::vector<UnsignedInt>, const Matrix4&, UnsignedInt, Int, Int, const void*) instead") MeshObjectData2D(std::vector<UnsignedInt> children, const Matrix3& transformation, UnsignedInt instance, Int material, const void* importerState = nullptr): MeshObjectData2D{std::move(children), transformation, instance, material, -1, importerState} {}
-        #endif
 
         /**
          * @brief Construct with separate transformations
@@ -133,5 +141,8 @@ class MAGNUM_TRADE_EXPORT MeshObjectData2D: public ObjectData2D {
 };
 
 }}
+#else
+#error use Magnum/Trade/SceneData.h and the SceneData class instead
+#endif
 
 #endif

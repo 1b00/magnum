@@ -867,8 +867,8 @@ are Objects and Fields.
 
 ----
 
-
-@ref TODOTODO also there are TODO s in the cpp, fix them
+@ref TODO describe what happens when there's multiple scenes, how to know which
+    object belongs to which scene, ability to compress the object range?
 
 @see @ref AbstractImporter::scene()
 */
@@ -2247,6 +2247,11 @@ class MAGNUM_TRADE_EXPORT SceneData {
         const void* importerState() const { return _importerState; }
 
     private:
+        /* For custom deleter checks. Not done in the constructors here because
+           the restriction is pointless when used outside of plugin
+           implementations. */
+        friend AbstractImporter;
+
         /* Internal helper that doesn't assert, unlike fieldId() */
         UnsignedInt fieldFor(SceneField name) const;
 

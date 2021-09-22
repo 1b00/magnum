@@ -738,7 +738,7 @@ SceneData::SceneData(std::vector<UnsignedInt> children2D, std::vector<UnsignedIn
         {NoInit, children.size(), objects},
         {NoInit, children.size(), parents},
     };
-    _fields = {Containers::InPlaceInit, {
+    _fields = {InPlaceInit, {
         SceneFieldData{SceneField::Parent, objects, parents}
     }};
     Utility::copy(children, objects);
