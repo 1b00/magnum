@@ -1502,6 +1502,11 @@ void SceneDataTest::constructDeprecated() {
        is set directly */
     CORRADE_COMPARE(scene.is2D(), data.is2D);
     CORRADE_COMPARE(scene.is3D(), data.is3D);
+
+    /* The deleters have to be trivial, otherwise this instance wouldn't be
+       usable from an AbstractImporter */
+    CORRADE_VERIFY(!scene.releaseFieldData().deleter());
+    CORRADE_VERIFY(!scene.releaseData().deleter());
 }
 #endif
 
