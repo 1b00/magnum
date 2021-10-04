@@ -382,6 +382,7 @@ SceneData::SceneData(const SceneObjectType objectType, const UnsignedLong object
     UnsignedInt scalingField = ~UnsignedInt{};
     UnsignedInt meshField = ~UnsignedInt{};
     UnsignedInt meshMaterialField = ~UnsignedInt{};
+    UnsignedInt skinField = ~UnsignedInt{};
     for(std::size_t i = 0; i != _fields.size(); ++i) {
         const SceneFieldData& field = _fields[i];
 
@@ -457,6 +458,8 @@ SceneData::SceneData(const SceneObjectType objectType, const UnsignedLong object
             meshField = i;
         } else if(_fields[i]._name == SceneField::MeshMaterial) {
             meshMaterialField = i;
+        } else if(_fields[i]._name == SceneField::Skin) {
+            skinField = i;
         }
     }
 
@@ -549,6 +552,11 @@ SceneData::SceneData(const SceneObjectType objectType, const UnsignedLong object
             _dimensions = 3;
         } else CORRADE_INTERNAL_ASSERT_UNREACHABLE(); /* LCOV_EXCL_LINE */
     }
+
+    /* A skin field requires some transformation field to exist in order to
+       disambiguate between 2D and 3D */
+    CORRADE_ASSERT(skinField == ~UnsignedInt{} || _dimensions,
+        "Trade::SceneData: a skin field requires some transformation field to be present in order to disambiguate between 2D and 3D", );
     #endif
 }
 

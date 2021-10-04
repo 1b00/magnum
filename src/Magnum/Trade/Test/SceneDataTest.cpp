@@ -98,6 +98,7 @@ struct SceneDataTest: TestSuite::Tester {
     void constructMismatchedTRSViews();
     template<class T> void constructMismatchedTRSDimensionality();
     void constructMismatchedMeshMaterialView();
+    void constructAmbiguousSkinDimensions();
 
     void constructCopy();
     void constructMove();
@@ -253,6 +254,7 @@ SceneDataTest::SceneDataTest() {
               &SceneDataTest::constructMismatchedTRSDimensionality<Float>,
               &SceneDataTest::constructMismatchedTRSDimensionality<Double>,
               &SceneDataTest::constructMismatchedMeshMaterialView,
+              &SceneDataTest::constructAmbiguousSkinDimensions,
 
               &SceneDataTest::constructCopy,
               &SceneDataTest::constructMove,
@@ -1769,6 +1771,19 @@ void SceneDataTest::constructMismatchedMeshMaterialView() {
     CORRADE_COMPARE(out.str(),
         "Trade::SceneData: Trade::SceneField::MeshMaterial object data [0xcafe0018:0xcafe0024] is different from Trade::SceneField::Mesh object data [0xcafe0000:0xcafe000c]\n"
         "Trade::SceneData: Trade::SceneField::MeshMaterial object data [0xcafe0000:0xcafe0008] is different from Trade::SceneField::Mesh object data [0xcafe0000:0xcafe000c]\n");
+}
+
+void SceneDataTest::constructAmbiguousSkinDimensions() {
+    #ifdef CORRADE_NO_ASSERT
+    CORRADE_SKIP("CORRADE_NO_ASSERT defined, can't test assertions");
+    #endif
+
+    std::ostringstream out;
+    Error redirectError{&out};
+    SceneData{SceneObjectType::UnsignedInt, 0, nullptr, {
+        SceneFieldData{SceneField::Skin, SceneObjectType::UnsignedInt, nullptr, SceneFieldType::UnsignedInt, nullptr}
+    }};
+    CORRADE_COMPARE(out.str(), "Trade::SceneData: a skin field requires some transformation field to be present in order to disambiguate between 2D and 3D\n");
 }
 
 void SceneDataTest::constructCopy() {
@@ -3640,8 +3655,10 @@ template<class T> void SceneDataTest::skinsAsArray() {
     Containers::StridedArrayView1D<Field> view = fields;
 
     SceneData scene{SceneObjectType::UnsignedByte, 50, {}, fields, {
-        /* To verify it isn't just picking the first ever field */
-        SceneFieldData{SceneField::Parent, SceneObjectType::UnsignedByte, nullptr, SceneFieldType::Int, nullptr},
+        /* To verify it isn't just picking the first ever field; also to
+           satisfy the requirement of having a transformation field to
+           disambiguate the dimensionality */
+        SceneFieldData{SceneField::Translation, SceneObjectType::UnsignedByte, nullptr, SceneFieldType::Vector3, nullptr},
         SceneFieldData{SceneField::Skin, view.slice(&Field::object), view.slice(&Field::skin)}
     }};
 
@@ -3670,8 +3687,10 @@ void SceneDataTest::skinsIntoArray() {
     Containers::StridedArrayView1D<Field> view = fields;
 
     SceneData scene{SceneObjectType::UnsignedInt, 5, {}, fields, {
-        /* To verify it isn't just picking the first ever field */
-        SceneFieldData{SceneField::Parent, SceneObjectType::UnsignedInt, nullptr, SceneFieldType::Int, nullptr},
+        /* To verify it isn't just picking the first ever field; also to
+           satisfy the requirement of having a transformation field to
+           disambiguate the dimensionality */
+        SceneFieldData{SceneField::Translation, SceneObjectType::UnsignedInt, nullptr, SceneFieldType::Vector3, nullptr},
         SceneFieldData{SceneField::Skin,
             view.slice(&Field::object),
             view.slice(&Field::skin)},
@@ -3709,6 +3728,9 @@ void SceneDataTest::skinsIntoArrayInvalidSizeOrOffset() {
     Containers::StridedArrayView1D<Field> view = fields;
 
     SceneData scene{SceneObjectType::UnsignedInt, 5, {}, fields, {
+        /* To satisfy the requirement of having a transformation field to
+           disambiguate the dimensionality */
+        SceneFieldData{SceneField::Translation, SceneObjectType::UnsignedInt, nullptr, SceneFieldType::Vector3, nullptr},
         SceneFieldData{SceneField::Skin, view.slice(&Field::object), view.slice(&Field::skin)}
     }};
 
@@ -4608,6 +4630,9 @@ void SceneDataTest::skinsFor() {
     Containers::StridedArrayView1D<Field> view = fields;
 
     SceneData scene{SceneObjectType::UnsignedInt, 7, {}, fields, {
+        /* To satisfy the requirement of having a transformation field to
+           disambiguate the dimensionality */
+        SceneFieldData{SceneField::Translation, SceneObjectType::UnsignedInt, nullptr, SceneFieldType::Vector3, nullptr},
         SceneFieldData{SceneField::Skin, view.slice(&Field::object), view.slice(&Field::skin)}
     }};
 
