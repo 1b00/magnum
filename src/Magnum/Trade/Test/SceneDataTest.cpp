@@ -50,8 +50,8 @@ namespace Magnum { namespace Trade { namespace Test { namespace {
 struct SceneDataTest: TestSuite::Tester {
     explicit SceneDataTest();
 
-    void objectTypeSize();
-    void objectTypeSizeInvalid();
+    void objectTypeSizeAlignment();
+    void objectTypeSizeAlignmentInvalid();
     void debugObjectType();
 
     void customFieldName();
@@ -59,8 +59,8 @@ struct SceneDataTest: TestSuite::Tester {
     void customFieldNameNotCustom();
     void debugFieldName();
 
-    void fieldTypeSize();
-    void fieldTypeSizeInvalid();
+    void fieldTypeSizeAlignment();
+    void fieldTypeSizeAlignmentInvalid();
     void debugFieldType();
 
     void constructField();
@@ -222,8 +222,8 @@ const struct {
 #endif
 
 SceneDataTest::SceneDataTest() {
-    addTests({&SceneDataTest::objectTypeSize,
-              &SceneDataTest::objectTypeSizeInvalid,
+    addTests({&SceneDataTest::objectTypeSizeAlignment,
+              &SceneDataTest::objectTypeSizeAlignmentInvalid,
               &SceneDataTest::debugObjectType,
 
               &SceneDataTest::customFieldName,
@@ -231,8 +231,8 @@ SceneDataTest::SceneDataTest() {
               &SceneDataTest::customFieldNameNotCustom,
               &SceneDataTest::debugFieldName,
 
-              &SceneDataTest::fieldTypeSize,
-              &SceneDataTest::fieldTypeSizeInvalid,
+              &SceneDataTest::fieldTypeSizeAlignment,
+              &SceneDataTest::fieldTypeSizeAlignmentInvalid,
               &SceneDataTest::debugFieldType,
 
               &SceneDataTest::constructField,
@@ -424,14 +424,18 @@ SceneDataTest::SceneDataTest() {
 
 using namespace Math::Literals;
 
-void SceneDataTest::objectTypeSize() {
+void SceneDataTest::objectTypeSizeAlignment() {
     CORRADE_COMPARE(sceneObjectTypeSize(SceneObjectType::UnsignedByte), 1);
+    CORRADE_COMPARE(sceneObjectTypeAlignment(SceneObjectType::UnsignedByte), 1);
     CORRADE_COMPARE(sceneObjectTypeSize(SceneObjectType::UnsignedShort), 2);
+    CORRADE_COMPARE(sceneObjectTypeAlignment(SceneObjectType::UnsignedShort), 2);
     CORRADE_COMPARE(sceneObjectTypeSize(SceneObjectType::UnsignedInt), 4);
+    CORRADE_COMPARE(sceneObjectTypeAlignment(SceneObjectType::UnsignedInt), 4);
     CORRADE_COMPARE(sceneObjectTypeSize(SceneObjectType::UnsignedLong), 8);
+    CORRADE_COMPARE(sceneObjectTypeAlignment(SceneObjectType::UnsignedLong), 8);
 }
 
-void SceneDataTest::objectTypeSizeInvalid() {
+void SceneDataTest::objectTypeSizeAlignmentInvalid() {
     #ifdef CORRADE_NO_ASSERT
     CORRADE_SKIP("CORRADE_NO_ASSERT defined, can't test assertions");
     #endif
@@ -440,11 +444,15 @@ void SceneDataTest::objectTypeSizeInvalid() {
     Error redirectError{&out};
 
     sceneObjectTypeSize(SceneObjectType{});
+    sceneObjectTypeAlignment(SceneObjectType{});
     sceneObjectTypeSize(SceneObjectType(0x73));
+    sceneObjectTypeAlignment(SceneObjectType(0x73));
 
     CORRADE_COMPARE(out.str(),
         "Trade::sceneObjectTypeSize(): invalid type Trade::SceneObjectType(0x0)\n"
-        "Trade::sceneObjectTypeSize(): invalid type Trade::SceneObjectType(0x73)\n");
+        "Trade::sceneObjectTypeAlignment(): invalid type Trade::SceneObjectType(0x0)\n"
+        "Trade::sceneObjectTypeSize(): invalid type Trade::SceneObjectType(0x73)\n"
+        "Trade::sceneObjectTypeAlignment(): invalid type Trade::SceneObjectType(0x73)\n");
 }
 
 void SceneDataTest::debugObjectType() {
@@ -503,7 +511,7 @@ void SceneDataTest::debugFieldName() {
     CORRADE_COMPARE(out.str(), "Trade::SceneField::Transformation Trade::SceneField::Custom(73) Trade::SceneField(0xdeadda7)\n");
 }
 
-void SceneDataTest::fieldTypeSize() {
+void SceneDataTest::fieldTypeSizeAlignment() {
     /* Test at least one of every size */
     CORRADE_COMPARE(sceneFieldTypeSize(SceneFieldType::Byte), sizeof(Byte));
     CORRADE_COMPARE(sceneFieldTypeSize(SceneFieldType::Degh), sizeof(Degh));
@@ -523,9 +531,16 @@ void SceneDataTest::fieldTypeSize() {
     CORRADE_COMPARE(sceneFieldTypeSize(SceneFieldType::Matrix3x4d), sizeof(Matrix3x4d));
     CORRADE_COMPARE(sceneFieldTypeSize(SceneFieldType::Matrix4x4d), sizeof(Matrix4x4d));
     CORRADE_COMPARE(sceneFieldTypeSize(SceneFieldType::Pointer), sizeof(const void*));
+
+    /* Test at least one of every alignment */
+    CORRADE_COMPARE(sceneFieldTypeAlignment(SceneFieldType::Vector3ub), alignof(UnsignedByte));
+    CORRADE_COMPARE(sceneFieldTypeAlignment(SceneFieldType::Matrix3x3h), alignof(Half));
+    CORRADE_COMPARE(sceneFieldTypeAlignment(SceneFieldType::Range3Di), alignof(UnsignedInt));
+    CORRADE_COMPARE(sceneFieldTypeAlignment(SceneFieldType::DualComplexd), alignof(Double));
+    CORRADE_COMPARE(sceneFieldTypeAlignment(SceneFieldType::Pointer), alignof(const void*));
 }
 
-void SceneDataTest::fieldTypeSizeInvalid() {
+void SceneDataTest::fieldTypeSizeAlignmentInvalid() {
     #ifdef CORRADE_NO_ASSERT
     CORRADE_SKIP("CORRADE_NO_ASSERT defined, can't test assertions");
     #endif
@@ -534,11 +549,15 @@ void SceneDataTest::fieldTypeSizeInvalid() {
     Error redirectError{&out};
 
     sceneFieldTypeSize(SceneFieldType{});
+    sceneFieldTypeAlignment(SceneFieldType{});
     sceneFieldTypeSize(SceneFieldType(0xdead));
+    sceneFieldTypeAlignment(SceneFieldType(0xdead));
 
     CORRADE_COMPARE(out.str(),
         "Trade::sceneFieldTypeSize(): invalid type Trade::SceneFieldType(0x0)\n"
-        "Trade::sceneFieldTypeSize(): invalid type Trade::SceneFieldType(0xdead)\n");
+        "Trade::sceneFieldTypeAlignment(): invalid type Trade::SceneFieldType(0x0)\n"
+        "Trade::sceneFieldTypeSize(): invalid type Trade::SceneFieldType(0xdead)\n"
+        "Trade::sceneFieldTypeAlignment(): invalid type Trade::SceneFieldType(0xdead)\n");
 }
 
 void SceneDataTest::debugFieldType() {
