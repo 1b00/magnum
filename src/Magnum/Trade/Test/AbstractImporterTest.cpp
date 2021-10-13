@@ -48,6 +48,7 @@
 #ifdef MAGNUM_BUILD_DEPRECATED
 #include <Corrade/Containers/ArrayTuple.h>
 #include <Corrade/TestSuite/Compare/Container.h>
+#include <Corrade/Utility/Algorithms.h>
 
 #define _MAGNUM_NO_DEPRECATED_MESHDATA /* So it doesn't yell here */
 #define _MAGNUM_NO_DEPRECATED_OBJECTDATA /* So it doesn't yell here */
@@ -116,6 +117,8 @@ struct AbstractImporterTest: TestSuite::Tester {
     void sceneDeprecatedFallbackParentless3D();
     void sceneDeprecatedFallbackTransformless2D();
     void sceneDeprecatedFallbackTransformless3D();
+    void sceneDeprecatedFallbackMultiFunctionObjects2D();
+    void sceneDeprecatedFallbackMultiFunctionObjects3D();
     #endif
     void sceneNameNotImplemented();
     void objectNameNotImplemented();
@@ -394,6 +397,8 @@ AbstractImporterTest::AbstractImporterTest() {
               &AbstractImporterTest::sceneDeprecatedFallbackParentless3D,
               &AbstractImporterTest::sceneDeprecatedFallbackTransformless2D,
               &AbstractImporterTest::sceneDeprecatedFallbackTransformless3D,
+              &AbstractImporterTest::sceneDeprecatedFallbackMultiFunctionObjects2D,
+              &AbstractImporterTest::sceneDeprecatedFallbackMultiFunctionObjects3D,
               #endif
               &AbstractImporterTest::sceneForNameOutOfRange,
               &AbstractImporterTest::objectForNameOutOfRange,
@@ -2558,6 +2563,358 @@ void AbstractImporterTest::sceneDeprecatedFallbackTransformless3D() {
         CORRADE_COMPARE(o->instance(), -1);
         CORRADE_COMPARE(o->flags(), ObjectFlags3D{});
         CORRADE_COMPARE(o->transformation(), Matrix4{});
+        CORRADE_COMPARE_AS(o->children(),
+            std::vector<UnsignedInt>{},
+            TestSuite::Compare::Container);
+    }
+    CORRADE_IGNORE_DEPRECATED_POP
+}
+
+void AbstractImporterTest::sceneDeprecatedFallbackMultiFunctionObjects2D() {
+    /* Mostly just a copy of SceneToolsTest::convertToSingleFunctionObjects()
+       except that here we can't use the convenience combining tool so it's
+       done by hand */
+
+    struct Parent {
+        UnsignedInt object;
+        Int parent;
+    };
+    struct Mesh {
+        UnsignedInt object;
+        UnsignedInt mesh;
+        Int meshMaterial;
+    };
+    struct Camera {
+        UnsignedInt object;
+        UnsignedInt camera;
+    };
+    Containers::StridedArrayView1D<Parent> parents;
+    Containers::StridedArrayView1D<Mesh> meshes;
+    Containers::StridedArrayView1D<Camera> cameras;
+    Containers::Array<char> dataData = Containers::ArrayTuple{
+        {NoInit, 5, parents},
+        {NoInit, 7, meshes},
+        {NoInit, 2, cameras},
+    };
+
+    SceneData data{SceneObjectType::UnsignedInt, 32, std::move(dataData), {
+        SceneFieldData{SceneField::Parent, parents.slice(&Parent::object), parents.slice(&Parent::parent)},
+        SceneFieldData{SceneField::Mesh, meshes.slice(&Mesh::object), meshes.slice(&Mesh::mesh)},
+        SceneFieldData{SceneField::MeshMaterial, meshes.slice(&Mesh::object), meshes.slice(&Mesh::meshMaterial)},
+        SceneFieldData{SceneField::Camera, cameras.slice(&Camera::object), cameras.slice(&Camera::camera)},
+        /* Just to disambiguate this as a 2D scene */
+        SceneFieldData{SceneField::Transformation, SceneObjectType::UnsignedInt, nullptr, SceneFieldType::Matrix3x3, nullptr},
+    }};
+    Utility::copy(Containers::arrayView<UnsignedInt>({15, 21, 22, 23, 1}),
+        data.mutableObjects<UnsignedInt>(SceneField::Parent));
+    Utility::copy(Containers::arrayView<Int>({-1, -1, 1, 2, -1}),
+        data.mutableField<Int>(SceneField::Parent));
+    Utility::copy(Containers::arrayView<UnsignedInt>({15, 23, 23, 23, 1, 15, 21}),
+        data.mutableObjects<UnsignedInt>(SceneField::Mesh));
+    Utility::copy(Containers::arrayView<UnsignedInt>({6, 1, 2, 4, 7, 3, 5}),
+        data.mutableField<UnsignedInt>(SceneField::Mesh));
+    Utility::copy(Containers::arrayView<Int>({4, 0, 3, 2, 2, 1, -1}),
+        data.mutableField<Int>(SceneField::MeshMaterial));
+    Utility::copy(Containers::arrayView<UnsignedInt>({22, 1}),
+        data.mutableObjects<UnsignedInt>(SceneField::Camera));
+    Utility::copy(Containers::arrayView<UnsignedInt>({1, 5}),
+        data.mutableField<UnsignedInt>(SceneField::Camera));
+    struct Importer: AbstractImporter {
+        explicit Importer(SceneData&& data): _data{std::move(data)} {}
+
+        ImporterFeatures doFeatures() const override { return {}; }
+        bool doIsOpened() const override { return true; }
+        void doClose() override {}
+
+        UnsignedInt doSceneCount() const override { return 1; }
+        UnsignedLong doObjectCount() const override { return 63; }
+        Containers::Optional<SceneData> doScene(UnsignedInt) override {
+            return SceneData{SceneObjectType::UnsignedInt, 32, {}, _data.data(), sceneFieldDataNonOwningArray(_data.fieldData())};
+            CORRADE_INTERNAL_ASSERT_UNREACHABLE();
+        }
+
+        private:
+            SceneData _data;
+    } importer{std::move(data)};
+
+    CORRADE_COMPARE(importer.sceneCount(), 1);
+
+    Containers::Optional<SceneData> scene = importer.scene(0);
+    CORRADE_VERIFY(scene);
+
+    CORRADE_IGNORE_DEPRECATED_PUSH
+    CORRADE_COMPARE_AS(scene->children2D(),
+        (std::vector<UnsignedInt>{15, 21, 1}),
+        TestSuite::Compare::Container);
+    CORRADE_COMPARE_AS(scene->children3D(),
+        std::vector<UnsignedInt>{},
+        TestSuite::Compare::Container);
+
+    /* Total object count reported by the importer plus four new added */
+    CORRADE_COMPARE(importer.object2DCount(), 63 + 4);
+    CORRADE_COMPARE(importer.object3DCount(), 0);
+
+    /* Only 9 objects should exist in total, go in order. Usually the object
+       IDs will be contiguous so no such mess as this happens. */
+    {
+        Containers::Pointer<ObjectData2D> o = importer.object2D(1);
+        CORRADE_VERIFY(o);
+        CORRADE_COMPARE(o->instanceType(), ObjectInstanceType2D::Mesh);
+        CORRADE_COMPARE(o->instance(), 7);
+        CORRADE_COMPARE_AS(o->children(),
+            std::vector<UnsignedInt>{66},
+            TestSuite::Compare::Container);
+        MeshObjectData2D& mo = static_cast<MeshObjectData2D&>(*o);
+        CORRADE_COMPARE(mo.material(), 2);
+    } {
+        Containers::Pointer<ObjectData2D> o = importer.object2D(15);
+        CORRADE_VERIFY(o);
+        CORRADE_COMPARE(o->instanceType(), ObjectInstanceType2D::Mesh);
+        CORRADE_COMPARE(o->instance(), 6);
+        CORRADE_COMPARE_AS(o->children(),
+            std::vector<UnsignedInt>{65},
+            TestSuite::Compare::Container);
+        MeshObjectData2D& mo = static_cast<MeshObjectData2D&>(*o);
+        CORRADE_COMPARE(mo.material(), 4);
+    } {
+        Containers::Pointer<ObjectData2D> o = importer.object2D(21);
+        CORRADE_VERIFY(o);
+        CORRADE_COMPARE(o->instanceType(), ObjectInstanceType2D::Mesh);
+        CORRADE_COMPARE(o->instance(), 5);
+        CORRADE_COMPARE_AS(o->children(),
+            std::vector<UnsignedInt>{22},
+            TestSuite::Compare::Container);
+        MeshObjectData2D& mo = static_cast<MeshObjectData2D&>(*o);
+        CORRADE_COMPARE(mo.material(), -1);
+    } {
+        Containers::Pointer<ObjectData2D> o = importer.object2D(22);
+        CORRADE_VERIFY(o);
+        CORRADE_COMPARE(o->instanceType(), ObjectInstanceType2D::Camera);
+        CORRADE_COMPARE(o->instance(), 1);
+        CORRADE_COMPARE_AS(o->children(),
+            std::vector<UnsignedInt>{23},
+            TestSuite::Compare::Container);
+    } {
+        Containers::Pointer<ObjectData2D> o = importer.object2D(23);
+        CORRADE_VERIFY(o);
+        CORRADE_COMPARE(o->instanceType(), ObjectInstanceType2D::Mesh);
+        CORRADE_COMPARE(o->instance(), 1);
+        CORRADE_COMPARE_AS(o->children(),
+            (std::vector<UnsignedInt>{63, 64}),
+            TestSuite::Compare::Container);
+        MeshObjectData2D& mo = static_cast<MeshObjectData2D&>(*o);
+        CORRADE_COMPARE(mo.material(), 0);
+    } {
+        Containers::Pointer<ObjectData2D> o = importer.object2D(63);
+        CORRADE_VERIFY(o);
+        CORRADE_COMPARE(o->instanceType(), ObjectInstanceType2D::Mesh);
+        CORRADE_COMPARE(o->instance(), 2);
+        CORRADE_COMPARE_AS(o->children(),
+            std::vector<UnsignedInt>{},
+            TestSuite::Compare::Container);
+        MeshObjectData2D& mo = static_cast<MeshObjectData2D&>(*o);
+        CORRADE_COMPARE(mo.material(), 3);
+    } {
+        Containers::Pointer<ObjectData2D> o = importer.object2D(64);
+        CORRADE_VERIFY(o);
+        CORRADE_COMPARE(o->instanceType(), ObjectInstanceType2D::Mesh);
+        CORRADE_COMPARE(o->instance(), 4);
+        CORRADE_COMPARE_AS(o->children(),
+            std::vector<UnsignedInt>{},
+            TestSuite::Compare::Container);
+        MeshObjectData2D& mo = static_cast<MeshObjectData2D&>(*o);
+        CORRADE_COMPARE(mo.material(), 2);
+    } {
+        Containers::Pointer<ObjectData2D> o = importer.object2D(65);
+        CORRADE_VERIFY(o);
+        CORRADE_COMPARE(o->instanceType(), ObjectInstanceType2D::Mesh);
+        CORRADE_COMPARE(o->instance(), 3);
+        CORRADE_COMPARE_AS(o->children(),
+            std::vector<UnsignedInt>{},
+            TestSuite::Compare::Container);
+        MeshObjectData2D& mo = static_cast<MeshObjectData2D&>(*o);
+        CORRADE_COMPARE(mo.material(), 1);
+    } {
+        Containers::Pointer<ObjectData2D> o = importer.object2D(66);
+        CORRADE_VERIFY(o);
+        CORRADE_COMPARE(o->instanceType(), ObjectInstanceType2D::Camera);
+        CORRADE_COMPARE(o->instance(), 5);
+        CORRADE_COMPARE_AS(o->children(),
+            std::vector<UnsignedInt>{},
+            TestSuite::Compare::Container);
+    }
+    CORRADE_IGNORE_DEPRECATED_POP
+}
+
+void AbstractImporterTest::sceneDeprecatedFallbackMultiFunctionObjects3D() {
+    /* Mostly just a copy of SceneToolsTest::convertToSingleFunctionObjects()
+       except that here we can't use the convenience combining tool so it's
+       done by hand */
+
+    struct Parent {
+        UnsignedInt object;
+        Int parent;
+    };
+    struct Mesh {
+        UnsignedInt object;
+        UnsignedInt mesh;
+        Int meshMaterial;
+    };
+    struct Camera {
+        UnsignedInt object;
+        UnsignedInt camera;
+    };
+    Containers::StridedArrayView1D<Parent> parents;
+    Containers::StridedArrayView1D<Mesh> meshes;
+    Containers::StridedArrayView1D<Camera> cameras;
+    Containers::Array<char> dataData = Containers::ArrayTuple{
+        {NoInit, 5, parents},
+        {NoInit, 7, meshes},
+        {NoInit, 2, cameras},
+    };
+
+    SceneData data{SceneObjectType::UnsignedInt, 32, std::move(dataData), {
+        SceneFieldData{SceneField::Parent, parents.slice(&Parent::object), parents.slice(&Parent::parent)},
+        SceneFieldData{SceneField::Mesh, meshes.slice(&Mesh::object), meshes.slice(&Mesh::mesh)},
+        SceneFieldData{SceneField::MeshMaterial, meshes.slice(&Mesh::object), meshes.slice(&Mesh::meshMaterial)},
+        SceneFieldData{SceneField::Camera, cameras.slice(&Camera::object), cameras.slice(&Camera::camera)},
+        /* Just to disambiguate this as a 3D scene */
+        SceneFieldData{SceneField::Transformation, SceneObjectType::UnsignedInt, nullptr, SceneFieldType::Matrix4x4, nullptr},
+    }};
+    Utility::copy(Containers::arrayView<UnsignedInt>({15, 21, 22, 23, 1}),
+        data.mutableObjects<UnsignedInt>(SceneField::Parent));
+    Utility::copy(Containers::arrayView<Int>({-1, -1, 1, 2, -1}),
+        data.mutableField<Int>(SceneField::Parent));
+    Utility::copy(Containers::arrayView<UnsignedInt>({15, 23, 23, 23, 1, 15, 21}),
+        data.mutableObjects<UnsignedInt>(SceneField::Mesh));
+    Utility::copy(Containers::arrayView<UnsignedInt>({6, 1, 2, 4, 7, 3, 5}),
+        data.mutableField<UnsignedInt>(SceneField::Mesh));
+    Utility::copy(Containers::arrayView<Int>({4, 0, 3, 2, 2, 1, -1}),
+        data.mutableField<Int>(SceneField::MeshMaterial));
+    Utility::copy(Containers::arrayView<UnsignedInt>({22, 1}),
+        data.mutableObjects<UnsignedInt>(SceneField::Camera));
+    Utility::copy(Containers::arrayView<UnsignedInt>({1, 5}),
+        data.mutableField<UnsignedInt>(SceneField::Camera));
+    struct Importer: AbstractImporter {
+        explicit Importer(SceneData&& data): _data{std::move(data)} {}
+
+        ImporterFeatures doFeatures() const override { return {}; }
+        bool doIsOpened() const override { return true; }
+        void doClose() override {}
+
+        UnsignedInt doSceneCount() const override { return 1; }
+        UnsignedLong doObjectCount() const override { return 63; }
+        Containers::Optional<SceneData> doScene(UnsignedInt) override {
+            return SceneData{SceneObjectType::UnsignedInt, 32, {}, _data.data(), sceneFieldDataNonOwningArray(_data.fieldData())};
+            CORRADE_INTERNAL_ASSERT_UNREACHABLE();
+        }
+
+        private:
+            SceneData _data;
+    } importer{std::move(data)};
+
+    CORRADE_COMPARE(importer.sceneCount(), 1);
+
+    Containers::Optional<SceneData> scene = importer.scene(0);
+    CORRADE_VERIFY(scene);
+
+    CORRADE_IGNORE_DEPRECATED_PUSH
+    CORRADE_COMPARE_AS(scene->children2D(),
+        std::vector<UnsignedInt>{},
+        TestSuite::Compare::Container);
+    CORRADE_COMPARE_AS(scene->children3D(),
+        (std::vector<UnsignedInt>{15, 21, 1}),
+        TestSuite::Compare::Container);
+
+    /* Total object count reported by the importer plus four new added */
+    CORRADE_COMPARE(importer.object2DCount(), 0);
+    CORRADE_COMPARE(importer.object3DCount(), 63 + 4);
+
+    /* Only 9 objects should exist in total, go in order. Usually the object
+       IDs will be contiguous so no such mess as this happens. */
+    {
+        Containers::Pointer<ObjectData3D> o = importer.object3D(1);
+        CORRADE_VERIFY(o);
+        CORRADE_COMPARE(o->instanceType(), ObjectInstanceType3D::Mesh);
+        CORRADE_COMPARE(o->instance(), 7);
+        CORRADE_COMPARE_AS(o->children(),
+            std::vector<UnsignedInt>{66},
+            TestSuite::Compare::Container);
+        MeshObjectData3D& mo = static_cast<MeshObjectData3D&>(*o);
+        CORRADE_COMPARE(mo.material(), 2);
+    } {
+        Containers::Pointer<ObjectData3D> o = importer.object3D(15);
+        CORRADE_VERIFY(o);
+        CORRADE_COMPARE(o->instanceType(), ObjectInstanceType3D::Mesh);
+        CORRADE_COMPARE(o->instance(), 6);
+        CORRADE_COMPARE_AS(o->children(),
+            std::vector<UnsignedInt>{65},
+            TestSuite::Compare::Container);
+        MeshObjectData3D& mo = static_cast<MeshObjectData3D&>(*o);
+        CORRADE_COMPARE(mo.material(), 4);
+    } {
+        Containers::Pointer<ObjectData3D> o = importer.object3D(21);
+        CORRADE_VERIFY(o);
+        CORRADE_COMPARE(o->instanceType(), ObjectInstanceType3D::Mesh);
+        CORRADE_COMPARE(o->instance(), 5);
+        CORRADE_COMPARE_AS(o->children(),
+            std::vector<UnsignedInt>{22},
+            TestSuite::Compare::Container);
+        MeshObjectData3D& mo = static_cast<MeshObjectData3D&>(*o);
+        CORRADE_COMPARE(mo.material(), -1);
+    } {
+        Containers::Pointer<ObjectData3D> o = importer.object3D(22);
+        CORRADE_VERIFY(o);
+        CORRADE_COMPARE(o->instanceType(), ObjectInstanceType3D::Camera);
+        CORRADE_COMPARE(o->instance(), 1);
+        CORRADE_COMPARE_AS(o->children(),
+            std::vector<UnsignedInt>{23},
+            TestSuite::Compare::Container);
+    } {
+        Containers::Pointer<ObjectData3D> o = importer.object3D(23);
+        CORRADE_VERIFY(o);
+        CORRADE_COMPARE(o->instanceType(), ObjectInstanceType3D::Mesh);
+        CORRADE_COMPARE(o->instance(), 1);
+        CORRADE_COMPARE_AS(o->children(),
+            (std::vector<UnsignedInt>{63, 64}),
+            TestSuite::Compare::Container);
+        MeshObjectData3D& mo = static_cast<MeshObjectData3D&>(*o);
+        CORRADE_COMPARE(mo.material(), 0);
+    } {
+        Containers::Pointer<ObjectData3D> o = importer.object3D(63);
+        CORRADE_VERIFY(o);
+        CORRADE_COMPARE(o->instanceType(), ObjectInstanceType3D::Mesh);
+        CORRADE_COMPARE(o->instance(), 2);
+        CORRADE_COMPARE_AS(o->children(),
+            std::vector<UnsignedInt>{},
+            TestSuite::Compare::Container);
+        MeshObjectData3D& mo = static_cast<MeshObjectData3D&>(*o);
+        CORRADE_COMPARE(mo.material(), 3);
+    } {
+        Containers::Pointer<ObjectData3D> o = importer.object3D(64);
+        CORRADE_VERIFY(o);
+        CORRADE_COMPARE(o->instanceType(), ObjectInstanceType3D::Mesh);
+        CORRADE_COMPARE(o->instance(), 4);
+        CORRADE_COMPARE_AS(o->children(),
+            std::vector<UnsignedInt>{},
+            TestSuite::Compare::Container);
+        MeshObjectData3D& mo = static_cast<MeshObjectData3D&>(*o);
+        CORRADE_COMPARE(mo.material(), 2);
+    } {
+        Containers::Pointer<ObjectData3D> o = importer.object3D(65);
+        CORRADE_VERIFY(o);
+        CORRADE_COMPARE(o->instanceType(), ObjectInstanceType3D::Mesh);
+        CORRADE_COMPARE(o->instance(), 3);
+        CORRADE_COMPARE_AS(o->children(),
+            std::vector<UnsignedInt>{},
+            TestSuite::Compare::Container);
+        MeshObjectData3D& mo = static_cast<MeshObjectData3D&>(*o);
+        CORRADE_COMPARE(mo.material(), 1);
+    } {
+        Containers::Pointer<ObjectData3D> o = importer.object3D(66);
+        CORRADE_VERIFY(o);
+        CORRADE_COMPARE(o->instanceType(), ObjectInstanceType3D::Camera);
+        CORRADE_COMPARE(o->instance(), 5);
         CORRADE_COMPARE_AS(o->children(),
             std::vector<UnsignedInt>{},
             TestSuite::Compare::Container);

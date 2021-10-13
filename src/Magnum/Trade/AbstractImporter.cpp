@@ -48,6 +48,8 @@
 #include <Corrade/Containers/Pair.h>
 #include <Corrade/Containers/Triple.h>
 
+#include "Magnum/Trade/Implementation/sceneTools.h"
+
 #define _MAGNUM_NO_DEPRECATED_MESHDATA /* So it doesn't yell here */
 #define _MAGNUM_NO_DEPRECATED_OBJECTDATA /* So it doesn't yell here */
 
@@ -488,12 +490,20 @@ void AbstractImporter::populateCachedScenes() {
     _cachedScenes->scenes = Containers::Array<Containers::Optional<SceneData>>{sceneCount()};
     for(UnsignedInt i = 0; i != _cachedScenes->scenes.size(); ++i) {
         _cachedScenes->scenes[i] = scene(i);
-
-        /* Return the 2D/3D object count based on which scenes are 2D and which
-           not. The objectCount() provided by the importer is ignored except
-           for the above, also because it doesn't take into account the
-           restriction for unique-functioning objects. */
         if(_cachedScenes->scenes[i]) {
+            /* Convert the scene so that each object has only either a mesh
+               (potentially with a material and a skin), a camera or a light.
+               The tool requires SceneField::Parent to be present, however if
+               it's not then we treat the scene as empty in the backwards
+               compatibility code path anyway, so just skip the processing
+               altogether in that case. */
+            if(_cachedScenes->scenes[i]->hasField(SceneField::Parent))
+                _cachedScenes->scenes[i] = Implementation::sceneConvertToSingleFunctionObjects(*_cachedScenes->scenes[i], Containers::arrayView({SceneField::Mesh, SceneField::Camera, SceneField::Light}), objectCount());
+
+            /* Return the 2D/3D object count based on which scenes are 2D and
+               which not. The objectCount() provided by the importer is ignored
+               except for the above, also because it doesn't take into account
+               the restriction for unique-functioning objects. */
             if(_cachedScenes->scenes[i]->is2D())
                 _cachedScenes->object2DCount = Math::max(_cachedScenes->object2DCount, UnsignedInt(_cachedScenes->scenes[i]->objectCount()));
             if(_cachedScenes->scenes[i]->is3D())
@@ -607,8 +617,10 @@ Containers::Pointer<ObjectData2D> AbstractImporter::doObject2D(const UnsignedInt
     const Containers::Array<UnsignedInt> skin = scene.skinsFor(id);
     const Containers::Optional<const void*> importerState = scene.importerStateFor(id);
 
-    /* All these should have at most 1 item as the old API doesn't have
-       any way to represent multi-function objects. */
+    /* All these should have at most 1 item as the SceneData got processed to
+       have each object contain either just one mesh or one camera (materials
+       are implicitly shared with a mesh, skins also). Thus it doesn't matter
+       in which order we decide on the legacy object type. */
     CORRADE_INTERNAL_ASSERT(camera.size() + mesh.size() <= 1);
 
     if(!mesh.empty()) {
@@ -763,8 +775,10 @@ Containers::Pointer<ObjectData3D> AbstractImporter::doObject3D(const UnsignedInt
     const Containers::Array<UnsignedInt> light = scene.lightsFor(id);
     const Containers::Optional<const void*> importerState = scene.importerStateFor(id);
 
-    /* All these should have at most 1 item as the old API doesn't have
-       any way to represent multi-function objects. */
+    /* All these should have at most 1 item as the SceneData got processed to
+       have each object contain either just one mesh, one camera or one light
+       (materials are implicitly shared with a mesh, skins also). Thus it
+       doesn't matter in which order we decide on the legacy object type. */
     CORRADE_INTERNAL_ASSERT(camera.size() + light.size() + mesh.size() <= 1);
 
     if(!mesh.empty()) {
