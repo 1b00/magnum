@@ -1159,19 +1159,97 @@ class MAGNUM_TRADE_EXPORT SceneData {
         bool is3D() const { return _dimensions == 3; }
 
         /**
+         * @brief Find an absolute ID of a named field
+         * @m_since_latest
+         *
+         * If @p name doesn't exist, returns @ref Containers::NullOpt.
+         * @see @ref hasField(), @ref fieldId()
+         */
+        Containers::Optional<UnsignedInt> findFieldId(SceneField name) const;
+
+        /**
+         * @brief Absolute ID of a named field
+         * @m_since_latest
+         *
+         * Like @ref findFieldId(), but the @p name is expected to exist.
+         * @see @ref hasField(), @ref fieldName(UnsignedInt) const
+         */
+        UnsignedInt fieldId(SceneField name) const;
+
+        /**
          * @brief Whether the scene has given field
          * @m_since_latest
          */
         bool hasField(SceneField name) const;
 
         /**
-         * @brief Absolute ID of a named field
+         * @brief Find offset of an object in given field
          * @m_since_latest
          *
-         * The @p name is expected to exist.
-         * @see @ref hasField(), @ref fieldName(UnsignedInt) const
+         * If @p object isn't present in @p fieldId starting at @p offset,
+         * returns @ref Containers::NullOpt. The @p fieldId is expected to be
+         * smaller than @ref fieldCount(), @p object smaller than
+         * @ref objectCount() and @p offset not larger than @ref fieldSize().
+         *
+         * You can also use @ref findFieldObjectOffset(SceneField, UnsignedInt, std::size_t) const
+         * to directly find offset of an object in given named field.
+         * @see @ref hasFieldObject(UnsignedInt, UnsignedInt) const,
+         *      @ref fieldObjectOffset(UnsignedInt, UnsignedInt, std::size_t) const
          */
-        UnsignedInt fieldId(SceneField name) const;
+        Containers::Optional<std::size_t> findFieldObjectOffset(UnsignedInt fieldId, UnsignedInt object, std::size_t offset = 0) const;
+
+        /**
+         * @brief Find offset of an object in given named field
+         * @m_since_latest
+         *
+         * If @p object isn't present in @p fieldName starting at @p offset,
+         * returns @ref Containers::NullOpt. The @p fieldName is expected to
+         * exist, @p object is expected to be smaller than @ref objectCount()
+         * and @p offset not be larger than @ref fieldSize().
+         * @see @ref hasField(), @ref hasFieldObject(SceneField, UnsignedInt) const,
+         *      @ref fieldObjectOffset(SceneField, UnsignedInt, std::size_t) const
+         */
+        Containers::Optional<std::size_t> findFieldObjectOffset(SceneField fieldName, UnsignedInt object, std::size_t offset = 0) const;
+
+        /**
+         * @brief Offset of an object in given field
+         * @m_since_latest
+         *
+         * Like @ref findFieldObjectOffset(UnsignedInt, UnsignedInt, std::size_t) const, but @p object is additionally expected to be present in
+         * @p fieldId starting at @p offset.
+         *
+         * You can also use @ref fieldObjectOffset(SceneField, UnsignedInt, std::size_t) const
+         * to directly get offset of an object in given named field.
+         */
+        std::size_t fieldObjectOffset(UnsignedInt fieldId, UnsignedInt object, std::size_t offset = 0) const;
+
+        /**
+         * @brief Offset of an object in given named field
+         * @m_since_latest
+         *
+         * Like @ref findFieldObjectOffset(SceneField, UnsignedInt, std::size_t) const, but @p object is additionally expected to be present in
+         * @p fieldName starting at @p offset.
+         */
+        std::size_t fieldObjectOffset(SceneField fieldName, UnsignedInt object, std::size_t offset = 0) const;
+
+        /**
+         * @brief Whether a scene field has given object
+         * @m_since_latest
+         *
+         * The @p fieldId is expected to be smaller than @ref fieldCount() and
+         * @p object smaller than @ref objectCount().
+         */
+        bool hasFieldObject(UnsignedInt fieldId, UnsignedInt object) const;
+
+        /**
+         * @brief Whether a named scene field has given object
+         * @m_since_latest
+         *
+         * The @p fieldName is expected to exist and @p object is expected to
+         * be smaller than @ref objectCount().
+         * @see @ref hasField()
+         */
+        bool hasFieldObject(SceneField fieldName, UnsignedInt object) const;
 
         /**
          * @brief Type of a named field
@@ -1481,7 +1559,8 @@ class MAGNUM_TRADE_EXPORT SceneData {
          * and size of the @p destination view, returning the count of items
          * actually extracted. The @p offset is expected to not be larger than
          * the field size.
-         * @see @ref fieldSize(UnsignedInt) const
+         * @see @ref fieldSize(UnsignedInt) const,
+         *      @ref fieldObjectOffset(UnsignedInt, UnsignedInt, std::size_t) const
          */
         std::size_t objectsInto(UnsignedInt fieldId, std::size_t offset, const Containers::StridedArrayView1D<UnsignedInt>& destination) const;
 
@@ -1523,7 +1602,8 @@ class MAGNUM_TRADE_EXPORT SceneData {
          * and size of the @p destination view, returning the count of items
          * actually extracted. The @p offset is expected to not be larger than
          * the field size.
-         * @see @ref fieldSize(SceneField) const
+         * @see @ref fieldSize(SceneField) const,
+         *      @ref fieldObjectOffset(SceneField, UnsignedInt, std::size_t) const
          */
         std::size_t objectsInto(SceneField fieldName, std::size_t offset, const Containers::StridedArrayView1D<UnsignedInt>& destination) const;
 
@@ -1565,7 +1645,8 @@ class MAGNUM_TRADE_EXPORT SceneData {
          * of the @p destination view, returning the count of items actually
          * extracted. The @p offset is expected to not be larger than the field
          * size.
-         * @see @ref fieldSize(SceneField) const
+         * @see @ref fieldSize(SceneField) const,
+         *      @ref fieldObjectOffset(SceneField, UnsignedInt, std::size_t) const
          */
         std::size_t parentsInto(std::size_t offset, const Containers::StridedArrayView1D<Int>& destination) const;
 
@@ -1608,7 +1689,8 @@ class MAGNUM_TRADE_EXPORT SceneData {
          * of the @p destination view, returning the count of items actually
          * extracted. The @p offset is expected to not be larger than the field
          * size.
-         * @see @ref fieldSize(SceneField) const
+         * @see @ref fieldSize(SceneField) const,
+         *      @ref fieldObjectOffset(SceneField, UnsignedInt, std::size_t) const
          */
         std::size_t transformations2DInto(std::size_t offset, const Containers::StridedArrayView1D<Matrix3>& destination) const;
 
@@ -1657,7 +1739,8 @@ class MAGNUM_TRADE_EXPORT SceneData {
          * of the views, returning the count of items actually extracted. The
          * @p offset is expected to not be larger than the field size, views
          * that are not @cpp nullptr @ce are expected to have the same size.
-         * @see @ref fieldSize(SceneField) const
+         * @see @ref fieldSize(SceneField) const,
+         *      @ref fieldObjectOffset(SceneField, UnsignedInt, std::size_t) const
          */
         std::size_t translationsRotationsScalings2DInto(std::size_t offset, const Containers::StridedArrayView1D<Vector2>& translationDestination, const Containers::StridedArrayView1D<Complex>& rotationDestination, const Containers::StridedArrayView1D<Vector2>& scalingDestination) const;
 
@@ -1700,7 +1783,8 @@ class MAGNUM_TRADE_EXPORT SceneData {
          * of the @p destination view, returning the count of items actually
          * extracted. The @p offset is expected to not be larger than the field
          * size.
-         * @see @ref fieldSize(SceneField) const
+         * @see @ref fieldSize(SceneField) const,
+         *      @ref fieldObjectOffset(SceneField, UnsignedInt, std::size_t) const
          */
         std::size_t transformations3DInto(std::size_t offset, const Containers::StridedArrayView1D<Matrix4>& destination) const;
 
@@ -1749,7 +1833,8 @@ class MAGNUM_TRADE_EXPORT SceneData {
          * of the views, returning the count of items actually extracted. The
          * @p offset is expected to not be larger than the field size, views
          * that are not @cpp nullptr @ce are expected to have the same size.
-         * @see @ref fieldSize(SceneField) const
+         * @see @ref fieldSize(SceneField) const,
+         *      @ref fieldObjectOffset(SceneField, UnsignedInt, std::size_t) const
          */
         std::size_t translationsRotationsScalings3DInto(std::size_t offset, const Containers::StridedArrayView1D<Vector3>& translationDestination, const Containers::StridedArrayView1D<Quaternion>& rotationDestination, const Containers::StridedArrayView1D<Vector3>& scalingDestination) const;
 
@@ -1790,7 +1875,8 @@ class MAGNUM_TRADE_EXPORT SceneData {
          * of the views, returning the count of items actually extracted. The
          * @p offset is expected to not be larger than the field size, views
          * that are not @cpp nullptr @ce are expected to have the same size.
-         * @see @ref fieldSize(SceneField) const
+         * @see @ref fieldSize(SceneField) const,
+         *      @ref fieldObjectOffset(SceneField, UnsignedInt, std::size_t) const
          */
         std::size_t meshesMaterialsInto(std::size_t offset, const Containers::StridedArrayView1D<UnsignedInt>& meshDestination, const Containers::StridedArrayView1D<Int>& meshMaterialsDestination) const;
 
@@ -1826,7 +1912,8 @@ class MAGNUM_TRADE_EXPORT SceneData {
          * of the @p destination view, returning the count of items actually
          * extracted. The @p offset is expected to not be larger than the field
          * size.
-         * @see @ref fieldSize(SceneField) const
+         * @see @ref fieldSize(SceneField) const,
+         *      @ref fieldObjectOffset(SceneField, UnsignedInt, std::size_t) const
          */
         std::size_t lightsInto(std::size_t offset, const Containers::StridedArrayView1D<UnsignedInt>& destination) const;
 
@@ -1862,7 +1949,8 @@ class MAGNUM_TRADE_EXPORT SceneData {
          * of the @p destination view, returning the count of items actually
          * extracted. The @p offset is expected to not be larger than the field
          * size.
-         * @see @ref fieldSize(SceneField) const
+         * @see @ref fieldSize(SceneField) const,
+         *      @ref fieldObjectOffset(SceneField, UnsignedInt, std::size_t) const
          */
         std::size_t camerasInto(std::size_t offset, const Containers::StridedArrayView1D<UnsignedInt>& destination) const;
 
@@ -1898,7 +1986,8 @@ class MAGNUM_TRADE_EXPORT SceneData {
          * of the @p destination view, returning the count of items actually
          * extracted. The @p offset is expected to not be larger than the field
          * size.
-         * @see @ref fieldSize(SceneField) const
+         * @see @ref fieldSize(SceneField) const,
+         *      @ref fieldObjectOffset(SceneField, UnsignedInt, std::size_t) const
          */
         std::size_t skinsInto(std::size_t offset, const Containers::StridedArrayView1D<UnsignedInt>& destination) const;
 
@@ -1937,7 +2026,8 @@ class MAGNUM_TRADE_EXPORT SceneData {
          * of the @p destination view, returning the count of items actually
          * extracted. The @p offset is expected to not be larger than the field
          * size.
-         * @see @ref fieldSize(SceneField) const
+         * @see @ref fieldSize(SceneField) const,
+         *      @ref fieldObjectOffset(SceneField, UnsignedInt, std::size_t) const
          */
         std::size_t importerStateInto(std::size_t offset, const Containers::StridedArrayView1D<const void*>& destination) const;
 
@@ -2252,13 +2342,14 @@ class MAGNUM_TRADE_EXPORT SceneData {
            implementations. */
         friend AbstractImporter;
 
-        /* Internal helper that doesn't assert, unlike fieldId() */
-        UnsignedInt fieldFor(SceneField name) const;
+        /* Internal helper without the extra overhead from Optional, returns
+           ~UnsignedInt{} on failure */
+        UnsignedInt findFieldIdInternal(SceneField name) const;
 
         /* Returns the offset at which `object` is for field at index `id`, or
            the end offset if the object is not found. The returned offset can
            be then passed to fieldData{Object,Field}ViewInternal(). */
-        std::size_t fieldFor(const SceneFieldData& field, std::size_t offset, UnsignedInt object) const;
+        std::size_t findFieldObjectOffsetInternal(const SceneFieldData& field, UnsignedInt object, std::size_t offset) const;
 
         /* Like objects() / field(), but returning just a 1D view, sliced from
            offset to offset + size. The parameterless overloads are equal to
@@ -2631,7 +2722,7 @@ template<class T, class> Containers::StridedArrayView1D<const T> SceneData::fiel
     if(!data.stride()[1]) return {};
     #endif
     #ifndef CORRADE_NO_ASSERT
-    if(!checkFieldTypeCompatibility<T>(_fields[fieldFor(name)], "Trade::SceneData::field():")) return {};
+    if(!checkFieldTypeCompatibility<T>(_fields[findFieldIdInternal(name)], "Trade::SceneData::field():")) return {};
     #endif
     return Containers::arrayCast<1, const T>(data);
 }
@@ -2642,7 +2733,7 @@ template<class T, class> Containers::StridedArrayView2D<const typename std::remo
     if(!data.stride()[1]) return {};
     #endif
     #ifndef CORRADE_NO_ASSERT
-    if(!checkFieldTypeCompatibility<T>(_fields[fieldFor(name)], "Trade::SceneData::field():")) return {};
+    if(!checkFieldTypeCompatibility<T>(_fields[findFieldIdInternal(name)], "Trade::SceneData::field():")) return {};
     #endif
     return Containers::arrayCast<2, const typename std::remove_extent<T>::type>(data);
 }
@@ -2653,7 +2744,7 @@ template<class T, class> Containers::StridedArrayView1D<T> SceneData::mutableFie
     if(!data.stride()[1]) return {};
     #endif
     #ifndef CORRADE_NO_ASSERT
-    if(!checkFieldTypeCompatibility<T>(_fields[fieldFor(name)], "Trade::SceneData::mutableField():")) return {};
+    if(!checkFieldTypeCompatibility<T>(_fields[findFieldIdInternal(name)], "Trade::SceneData::mutableField():")) return {};
     #endif
     return Containers::arrayCast<1, T>(data);
 }
@@ -2664,7 +2755,7 @@ template<class T, class> Containers::StridedArrayView2D<typename std::remove_ext
     if(!data.stride()[1]) return {};
     #endif
     #ifndef CORRADE_NO_ASSERT
-    if(!checkFieldTypeCompatibility<T>(_fields[fieldFor(name)], "Trade::SceneData::mutableField():")) return {};
+    if(!checkFieldTypeCompatibility<T>(_fields[findFieldIdInternal(name)], "Trade::SceneData::mutableField():")) return {};
     #endif
     return Containers::arrayCast<2, typename std::remove_extent<T>::type>(data);
 }
